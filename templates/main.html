@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Running Apps</h1>
+<div class="card">
+    <div class="card-header">
+        Running Apps
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Port</th>
+                    <th>Status</th>
+                    <th>Uptime</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="appsTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

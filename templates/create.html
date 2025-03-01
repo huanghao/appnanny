@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Create New App - AppNanny Dashboard{% endblock %}
+
+{% block content %}
+<h1>Create New App</h1>
+<div class="card">
+    <div class="card-header">
+        Create New App
+    </div>
+    <div class="card-body">
+        <form id="createAppForm">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="appName">App Name</label>
+                    <input type="text" class="form-control" id="appName" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="appType">App Type</label>
+                    <select class="form-control" id="appType" required>
+                        <option value="streamlit">Streamlit</option>
+                        <option value="voila">Voila</option>
+                        <option value="gradio">Gradio</option>
+                        <option value="flask">Flask</option>
+                        <option value="fastapi">FastAPI</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="repoUrl">Repository URL</label>
+                    <input type="text" class="form-control" id="repoUrl" required>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="path">Path</label>
+                    <input type="text" class="form-control" id="path" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" class="form-control" id="email" required>
+            </div>
+            <div class="form-group">
+                <label for="envVars">Environment Variables (JSON)</label>
+                <textarea class="form-control" id="envVars" rows="3">{}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Create App</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/create.js') }}"></script>
+{% endblock %}
