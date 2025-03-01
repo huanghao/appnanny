@@ -7,12 +7,12 @@ class Config:
     PORT = 5000
 
     # App storage and metadata
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     STORAGE_PATH = os.path.join(BASE_DIR, "apps")
     METADATA_FILE = "apps_metadata.json"
 
     # Logging
-    LOG_FILE = "appnanny.log"
+    LOG_FILE = os.path.join(STORAGE_PATH, "appnanny.log")
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     LOG_LEVEL = "INFO"
     LOG_MAX_BYTES = 2_000_000  # 2MB
