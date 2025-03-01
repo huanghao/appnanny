@@ -40,6 +40,7 @@ function loadApps() {
                             `<button onclick="startApp('${name}')" class="btn btn-sm btn-success">Start</button>`
                         }
                         <button onclick="restartApp('${name}')" class="btn btn-sm btn-warning">Restart</button>
+                        <button onclick="window.location.href='/env/${name}'" class="btn btn-sm btn-info">Env</button>
                     </td>
                 `;
                 tbody.appendChild(row);

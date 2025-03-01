@@ -33,6 +33,9 @@ class Config:
         "gradio": ["python"],
     }
 
+    # port range for app
+    PORT_RANGE = list(range(8080, 8090)) + list(range(4040, 4050))
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

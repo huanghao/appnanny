@@ -2,6 +2,6 @@
 ; max-line-length = 100
 ; extend-ignore = E203
 extend-ignore = E501
-exclude = .git,__pycache__,build,dist
+exclude = .git,__pycache__,build,dist,apps
 ; per-file-ignores =
 ;     __init__.py: F401

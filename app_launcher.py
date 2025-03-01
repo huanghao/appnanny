@@ -1,25 +1,75 @@
 import os
 import socket
 import subprocess
-from logging_config import logger
-from port_utils import find_available_port
+
 import git
 import psutil
+from dotenv import dotenv_values
+
+from port_utils import find_available_port
+from logging_config import logger
 
 
 class AppLauncher:
     def __init__(self, storage_path):
         self.storage_path = storage_path
 
-    def launch(self, app_name, app_type, repo, path, env_vars, preferred_port=None):
-        """Launch a new application instance"""
-        logger.info(
-            f"Starting launch process for app '{app_name}' (type: {app_type}, repo: {repo})"
-        )
+    def clone_repository(self, app_name, repo):
+        """Initial repository clone for new app"""
+        app_dir = os.path.join(self.storage_path, app_name)
+        if not os.path.exists(app_dir):
+            logger.info(f"Creating directory for app '{app_name}': {app_dir}")
+            os.makedirs(app_dir)
 
-        # Setup app directory and repo
-        app_dir = self._setup_app_directory(app_name, repo)
-        if not app_dir:
+        try:
+            if os.path.exists(os.path.join(app_dir, ".git")):
+                logger.error(f"Git repository already exists for app '{app_name}'")
+                return None
+
+            logger.info(f"Cloning repository for app '{app_name}' from {repo}")
+            git.Repo.clone_from(repo, app_dir)
+            return app_dir
+        except git.GitCommandError as e:
+            logger.error(
+                f"Git clone failed for app '{app_name}': {str(e)}", exc_info=True
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during git clone for app '{app_name}': {str(e)}",
+                exc_info=True,
+            )
+            return None
+
+    def update_repository(self, app_name):
+        """Update existing repository"""
+        app_dir = os.path.join(self.storage_path, app_name)
+        try:
+            if not os.path.exists(os.path.join(app_dir, ".git")):
+                logger.error(f"No git repository found for app '{app_name}'")
+                return False
+
+            logger.info(f"Updating repository for app '{app_name}'")
+            git_repo = git.Repo(app_dir)
+            git_repo.remotes.origin.pull()
+            return True
+        except git.GitCommandError as e:
+            logger.error(
+                f"Git pull failed for app '{app_name}': {str(e)}", exc_info=True
+            )
+            return False
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during git pull for app '{app_name}': {str(e)}",
+                exc_info=True,
+            )
+            return False
+
+    def launch(self, app_name, app_type, path, env_vars, preferred_port=None):
+        """Launch a new application instance"""
+        app_dir = os.path.join(self.storage_path, app_name)
+        if not os.path.exists(app_dir):
+            logger.error(f"App directory not found for '{app_name}'")
             return None
 
         # Allocate port
@@ -38,34 +88,6 @@ class AppLauncher:
             return None
 
         return port, process
-
-    def _setup_app_directory(self, app_name, repo):
-        """Setup application directory and clone/update repository"""
-        app_dir = os.path.join(self.storage_path, app_name)
-        if not os.path.exists(app_dir):
-            logger.info(f"Creating directory for app '{app_name}': {app_dir}")
-            os.makedirs(app_dir)
-
-        try:
-            if not os.path.exists(os.path.join(app_dir, ".git")):
-                logger.info(f"Cloning repository for app '{app_name}' from {repo}")
-                git.Repo.clone_from(repo, app_dir)
-            else:
-                logger.info(f"Updating existing repository for app '{app_name}'")
-                git_repo = git.Repo(app_dir)
-                git_repo.remotes.origin.pull()
-            return app_dir
-        except git.GitCommandError as e:
-            logger.error(
-                f"Git operation failed for app '{app_name}': {str(e)}", exc_info=True
-            )
-            return None
-        except Exception as e:
-            logger.error(
-                f"Unexpected error during git operation for app '{app_name}': {str(e)}",
-                exc_info=True,
-            )
-            return None
 
     def _allocate_port(self, app_name, preferred_port=None):
         """Allocate a port for the application"""
@@ -112,14 +134,20 @@ class AppLauncher:
     ):
         """Start the application process"""
         try:
+            # Load .env file if exists
+            env = os.environ.copy()
+            env_file = os.path.join(app_dir, ".env")
+            if os.path.exists(env_file):
+                env.update(dotenv_values(env_file))
+
+            # Add runtime variables
+            env.update(env_vars)
+            env["PORT"] = str(port)
+
             cmd = self._build_command(app_type, path, port)
             if not cmd:
                 logger.error(f"Unsupported app type '{app_type}' for app '{app_name}'")
                 return None
-
-            env = os.environ.copy()
-            env.update(env_vars)
-            env["PORT"] = str(port)
 
             logger.info(f"Launching app '{app_name}' with command: {' '.join(cmd)}")
             process = subprocess.Popen(

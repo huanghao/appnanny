@@ -3,7 +3,6 @@ import os
 import psutil
 
 from logging_config import logger
-from port_utils import find_available_port
 from config import active_config as config
 from app_state_manager import AppStateManager
 from app_launcher import AppLauncher
@@ -84,30 +83,20 @@ class AppService:
             return False
 
     def restart_app(self, app_name):
-        """Restart an application"""
-        # First stop the app
-        if not self.stop_app(app_name):
-            logger.error(f"Failed to stop app '{app_name}' during restart")
+        """Restart application with code update"""
+        # First update the code
+        if not self.app_launcher.update_repository(app_name):
+            logger.error(f"Failed to update repository for app '{app_name}'")
             return None
 
-        # Get metadata for relaunch
-        app_meta = self.state_manager.get_app_metadata(app_name)
-        if not app_meta:
-            logger.error(f"App '{app_name}' not found in metadata during restart")
-            return None
+        # Stop the app if it's running
+        if self.state_manager.is_app_running(app_name):
+            if not self.stop_app(app_name):
+                logger.error(f"Failed to stop app '{app_name}' during restart")
+                return None
 
-        # Relaunch with same configuration
-        port = self.launch_app(
-            app_name,
-            app_meta["type"],
-            app_meta["repo"],
-            app_meta["path"],
-            app_meta.get("env", {}),
-        )
-
-        if port:
-            self.state_manager.update_app_status(app_name, True, port)
-        return port
+        # Start the app with updated code
+        return self.start_app(app_name)
 
     def update_access_time(self, app_name):
         """Update last access time for an app"""
@@ -139,14 +128,13 @@ class AppService:
         return all_info
 
     def create_app(self, app_name, app_type, repo, path, email, env_vars=None):
-        """Create and start a new application"""
+        """Create a new application"""
         env_vars = env_vars or {}
 
-        # Get a new port for the app
-        port = find_available_port()
-        if not port:
-            logger.error("No available ports")
-            return None
+        # Clone repository
+        app_dir = self.app_launcher.clone_repository(app_name, repo)
+        if not app_dir:
+            return False
 
         # Create app metadata
         app_data = {
@@ -156,44 +144,40 @@ class AppService:
             "path": path,
             "email": email,
             "env": env_vars,
-            "port": port,
             "is_active": False,
             "last_start_time": 0,
         }
-        self.state_manager.add_app_metadata(app_data)
 
-        # Launch the app with the assigned port
-        launch_port = self.launch_app(app_name, app_type, repo, path, env_vars, port)
-        if launch_port:
-            self.state_manager.update_app_status(app_name, True)
-            return launch_port
-        return None
+        self.state_manager.add_app_metadata(app_data)
+        return True
 
     def start_app(self, app_name):
-        """Start an application"""
-        # Don't start if already running
-        if self.state_manager.is_app_running(app_name):  # New method needed
-            logger.warning(f"App '{app_name}' is already running")
-            return self.state_manager.get_app_port(app_name)  # New method needed
-
-        # Find app metadata
+        """Start an existing application"""
         app_meta = self.state_manager.get_app_metadata(app_name)
         if not app_meta:
             logger.error(f"App '{app_name}' not found in metadata")
             return None
 
-        # Launch the app with preferred port from metadata
-        preferred_port = app_meta.get("port")
-        port = self.launch_app(
+        # Launch app with current configuration
+        result = self.app_launcher.launch(
             app_name,
             app_meta["type"],
-            app_meta["repo"],
             app_meta["path"],
             app_meta.get("env", {}),
-            preferred_port,
+            app_meta.get("port"),
         )
+        if not result:
+            return None
 
-        if port and port != preferred_port:
-            self.state_manager.update_app_status(app_name, True, port)
-
+        port, process = result
+        self.state_manager.add_running_app(app_name, process, port)
         return port
+
+    def update_app_env(self, app_name, env_vars):
+        """Update app environment variables"""
+        try:
+            self.state_manager.save_app_env(app_name, env_vars)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update env vars for app '{app_name}': {str(e)}")
+            return False

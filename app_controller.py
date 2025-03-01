@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 
 from logging_config import logger
 
@@ -15,29 +15,17 @@ def init_controller(app_service):
 @app_controller.route("/create", methods=["POST"])
 def create_app():
     """Handle app creation requests"""
-    try:
-        data = request.json
-        port = _app_service.create_app(
-            data["name"],
-            data["type"],
-            data["repo"],
-            data["path"],
-            data["email"],
-            data.get("env", {}),
-        )
-
-        if port:
-            logger.info(f"Created and started app '{data['name']}' on port {port}.")
-            return jsonify({"message": f"App '{data['name']}' started", "port": port})
-        else:
-            logger.error("Failed to create app. No port or command.")
-            return jsonify({"error": "No available port or invalid type"}), 400
-
-    except KeyError as e:
-        return jsonify({"error": f"Missing required field: {str(e)}"}), 400
-    except Exception as e:
-        logger.error(f"Error creating app: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    data = request.json
+    if _app_service.create_app(
+        data["name"],
+        data["type"],
+        data["repo"],
+        data["path"],
+        data["email"],
+        data.get("env", {}),
+    ):
+        return jsonify({"message": f"App '{data['name']}' created successfully"})
+    return jsonify({"error": f"Failed to create app '{data['name']}'"}, 400)
 
 
 @app_controller.route("/stop/<app_name>", methods=["POST"])
@@ -87,3 +75,21 @@ def start_app(app_name):
             {"message": f"App '{app_name}' started on port {port}", "port": port}
         )
     return jsonify({"error": "Failed to start app"}), 400
+
+
+@app_controller.route("/env/<app_name>")
+def edit_env(app_name):
+    """Show environment variables editor"""
+    app_meta = _app_service.state_manager.get_app_metadata(app_name)
+    if not app_meta:
+        return jsonify({"error": "App not found"}), 404
+    return render_template("env.html", app_name=app_name, env=app_meta.get("env", {}))
+
+
+@app_controller.route("/env/<app_name>", methods=["POST"])
+def update_env(app_name):
+    """Update environment variables"""
+    env = request.json
+    if _app_service.update_app_env(app_name, env):
+        return jsonify({"message": "Environment variables updated successfully"})
+    return jsonify({"error": "Failed to update environment variables"}), 400

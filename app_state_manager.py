@@ -3,6 +3,7 @@ import json
 import time
 
 import psutil
+from dotenv import dotenv_values
 
 from logging_config import logger
 from pid_manager import PIDManager
@@ -17,6 +18,7 @@ class AppStateManager:
             storage_path: Base path for app storage
         """
         self.metadata_file = metadata_file
+        self.storage_path = storage_path  # Add this line
         self._pid_manager = PIDManager(storage_path)  # Internal dependency
         self.running_apps = {}
         self.apps_metadata = []
@@ -182,3 +184,33 @@ class AppStateManager:
                     )
                     self._pid_manager.remove_pid(app_name)
                     self.update_app_status(app_name, False)
+
+    def _get_env_file_path(self, app_name):
+        """Get path to env file for an app"""
+        return os.path.join(self.storage_path, app_name, ".env")
+
+    def load_app_env(self, app_name):
+        """Load environment variables from .env file"""
+        env_file = self._get_env_file_path(app_name)
+        if os.path.exists(env_file):
+            return dotenv_values(env_file)
+        return {}
+
+    def save_app_env(self, app_name, env_vars):
+        """Save environment variables to .env file"""
+        env_file = self._get_env_file_path(app_name)
+        app_dir = os.path.dirname(env_file)
+        if not os.path.exists(app_dir):
+            os.makedirs(app_dir)
+
+        # Clear existing file
+        with open(env_file, "w") as f:
+            for key, value in env_vars.items():
+                f.write(f"{key}={value}\n")
+
+        # Update metadata
+        for am in self.apps_metadata:
+            if am["name"] == app_name:
+                am["env"] = env_vars
+                self.save_metadata()
+                break
