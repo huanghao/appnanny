@@ -30,20 +30,6 @@ class AppService:
 
         return stdout_log, stderr_log
 
-    def launch_app(self, app_name, app_type, repo, path, env_vars, preferred_port=None):
-        """Launch a new application instance"""
-        result = self.app_launcher.launch(
-            app_name, app_type, repo, path, env_vars, preferred_port
-        )
-        if not result:
-            return None
-
-        port, process = result
-        self.state_manager.add_running_app(
-            app_name, process, port
-        )  # PID handling inside state_manager
-        return port
-
     def stop_app(self, app_name):
         """Stop a running application"""
         app_meta = self.state_manager.get_app_metadata(app_name)

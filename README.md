@@ -29,10 +29,13 @@ python scheduler.py
 
 ## 使用说明
 1. 通过管理界面添加新应用
+![newapp](imgs/newapp.jpg)
 2. 监控应用运行状态
 3. 查看应用日志
 4. 手动启动/停止应用
-5. 配置自动清理规则
+![listapp](imgs/applist.jpg)
+5. 配置应用环境变量
+![editenv](imgs/envedit.jpg)
 
 ## TODO
 - 去掉 apps_metadata.json 文件，把内容都写到app各自的目录里

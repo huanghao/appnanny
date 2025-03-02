@@ -144,7 +144,7 @@ class AppLauncher:
             env.update(env_vars)
             env["PORT"] = str(port)
 
-            cmd = self._build_command(app_type, path, port)
+            cmd, workdir = self._build_command(app_type, app_dir, path, port)
             if not cmd:
                 logger.error(f"Unsupported app type '{app_type}' for app '{app_name}'")
                 return None
@@ -152,7 +152,7 @@ class AppLauncher:
             logger.info(f"Launching app '{app_name}' with command: {' '.join(cmd)}")
             process = subprocess.Popen(
                 cmd,
-                cwd=app_dir,
+                cwd=workdir,
                 env=env,
                 stdout=open(stdout_log, "a"),
                 stderr=open(stderr_log, "a"),
@@ -168,12 +168,16 @@ class AppLauncher:
             )
             return None
 
-    def _build_command(self, app_type, path, port):
+    def _build_command(self, app_type, app_dir, path, port):
         """Build command list based on app type"""
+        workdir = os.path.dirname(os.path.join(app_dir, path))
+        scriptfile = os.path.basename(path)
         if app_type == "streamlit":
-            return ["streamlit", "run", path, "--server.port", str(port)]
+            cmd = ["streamlit", "run", scriptfile, "--server.port", str(port)]
         elif app_type == "voila":
-            return ["voila", path, "--port", str(port)]
+            cmd = ["voila", scriptfile, "--port", str(port)]
         elif app_type == "flask":
-            return ["python", path, "--port", str(port)]
-        return None
+            cmd = ["python", scriptfile, "--port", str(port)]
+        else:
+            cmd = []
+        return cmd, workdir
